@@ -242,6 +242,25 @@ select{appearance:none;background-image:linear-gradient(45deg,transparent 50%,va
 .jauge > i.attention{background:var(--accent)}
 .jauge > i.depasse{background:var(--rouge)}
 
+/* Portefeuilles */
+.portef{padding:var(--space-4) 0;border-bottom:1px solid var(--border)}
+.portef:last-child{border-bottom:none}
+.portef-haut{display:flex;align-items:baseline;justify-content:space-between;gap:var(--space-3);margin-bottom:var(--space-2);flex-wrap:wrap}
+.portef-nom{font-size:var(--text-base);font-weight:600;display:flex;align-items:center;gap:var(--space-2);flex-wrap:wrap}
+.portef-chiffres{font-size:var(--text-sm);white-space:nowrap}
+.portef-bas{display:flex;align-items:center;justify-content:space-between;gap:var(--space-3);margin-top:var(--space-2);flex-wrap:wrap}
+.portef-actions{display:flex;align-items:center;gap:var(--space-2);margin-left:auto}
+.portef-champ{width:110px;min-height:38px;padding:6px var(--space-3);font-size:var(--text-sm)}
+.item .portef-champ{flex:none}
+
+/* Résumé compact des portefeuilles sur le tableau de bord */
+.pf-mini{display:flex;flex-direction:column;gap:var(--space-3)}
+.pf-mini-l{display:grid;grid-template-columns:1fr auto;gap:var(--space-1) var(--space-3);align-items:center}
+.pf-mini-l .jauge{grid-column:1/-1}
+.pf-mini-nom{font-size:var(--text-sm);display:flex;align-items:center;gap:var(--space-2);min-width:0}
+.pf-mini-nom span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pf-mini-val{font-family:var(--mono);font-size:var(--text-sm);white-space:nowrap}
+
 /* Conseils */
 .conseil{display:flex;gap:var(--space-3);padding:var(--space-3);border:1px solid var(--border);border-radius:var(--radius);background:var(--bg-deep);align-items:flex-start}
 .conseil + .conseil{margin-top:var(--space-3)}
@@ -304,11 +323,20 @@ svg.graph{width:100%;height:auto;display:block;overflow:visible}
   .tableau td.n,.tableau th.n{text-align:right}
 }
 .scroll-x{overflow-x:auto}
+
+#bandeauMaj{
+  display:flex;align-items:center;justify-content:center;gap:var(--space-3);flex-wrap:wrap;
+  background:var(--accent);color:#12171C;
+  padding:var(--space-2) var(--space-4);
+  font-size:var(--text-sm);font-weight:600;text-align:center;
+  animation:apparait var(--normal) var(--ease-out) both;
+}
+#bandeauMaj .btn{background:#12171C;border-color:#12171C;color:var(--accent-fort);min-height:34px}
 </style>
 </head>
 <body>
 
-<header class="top">
+<header class="top" id="entete">
   <div class="wrap top-in">
     <div class="marque">
       <h1>Corridor</h1>
@@ -328,6 +356,7 @@ svg.graph{width:100%;height:auto;display:block;overflow:visible}
     <button class="onglet" role="tab" data-vue="bord" aria-selected="true"><i class="ic">◆</i><span>Bord</span></button>
     <button class="onglet" role="tab" data-vue="charges" aria-selected="false"><i class="ic">☐</i><span>Charges</span><span class="pip" id="pipCharges" hidden></span></button>
     <button class="onglet" role="tab" data-vue="depenses" aria-selected="false"><i class="ic">↓</i><span>Dépenses</span></button>
+    <button class="onglet" role="tab" data-vue="portefeuilles" aria-selected="false"><i class="ic">◈</i><span>Portefeuilles</span><span class="pip" id="pipPortef" hidden></span></button>
     <button class="onglet" role="tab" data-vue="revenus" aria-selected="false"><i class="ic">↑</i><span>Revenus</span></button>
     <button class="onglet" role="tab" data-vue="projets" aria-selected="false"><i class="ic">◔</i><span>Projets</span></button>
     <button class="onglet" role="tab" data-vue="analyse" aria-selected="false"><i class="ic">▤</i><span>Analyse</span></button>
@@ -339,6 +368,7 @@ svg.graph{width:100%;height:auto;display:block;overflow:visible}
   <section class="vue on" id="vue-bord"></section>
   <section class="vue" id="vue-charges"></section>
   <section class="vue" id="vue-depenses"></section>
+  <section class="vue" id="vue-portefeuilles"></section>
   <section class="vue" id="vue-revenus"></section>
   <section class="vue" id="vue-projets"></section>
   <section class="vue" id="vue-analyse"></section>
@@ -381,16 +411,16 @@ function etatVierge(){
       jourSalaire: 1
     },
     categories: [
-      {id:"c-loyer", nom:"Logement", essentiel:true, plafond:null},
-      {id:"c-nourriture", nom:"Nourriture", essentiel:true, plafond:null},
-      {id:"c-transport", nom:"Transport", essentiel:true, plafond:null},
-      {id:"c-sante", nom:"Santé", essentiel:true, plafond:null},
-      {id:"c-connexion", nom:"Internet & téléphone", essentiel:true, plafond:null},
-      {id:"c-energie", nom:"Électricité & eau", essentiel:true, plafond:null},
-      {id:"c-famille", nom:"Famille & obligations sociales", essentiel:true, plafond:null},
-      {id:"c-outils", nom:"Outils & abonnements pro", essentiel:false, plafond:null},
-      {id:"c-loisirs", nom:"Loisirs & sorties", essentiel:false, plafond:null},
-      {id:"c-divers", nom:"Divers", essentiel:false, plafond:null}
+      {id:"c-loyer", nom:"Logement", essentiel:true, budget:null},
+      {id:"c-nourriture", nom:"Cuisine & nourriture", essentiel:true, budget:null},
+      {id:"c-transport", nom:"Transport", essentiel:true, budget:null},
+      {id:"c-sante", nom:"Santé", essentiel:true, budget:null},
+      {id:"c-connexion", nom:"Internet & téléphone", essentiel:true, budget:null},
+      {id:"c-energie", nom:"Électricité & eau", essentiel:true, budget:null},
+      {id:"c-famille", nom:"Famille & obligations sociales", essentiel:true, budget:null},
+      {id:"c-outils", nom:"Outils & abonnements pro", essentiel:false, budget:null},
+      {id:"c-loisirs", nom:"Loisirs & sorties", essentiel:false, budget:null},
+      {id:"c-divers", nom:"Divers", essentiel:false, budget:null}
     ],
     charges: [],            // {id,libelle,montant,categorieId,jour,frequence,moisAncre,actif}
     revenusRecurrents: [],  // {id,libelle,montant,jour,fiabilite,actif}
@@ -428,9 +458,21 @@ function pct(n){ return (Math.round(n*10)/10).toString().replace(".",",") + " %"
 function ech(s){ return String(s==null?"":s).replace(/[&<>"']/g, function(c){
   return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c];
 });}
+/* Migration douce : les anciennes données parlaient de "plafond", on parle
+   désormais de "budget" de portefeuille. Aucune donnée n'est perdue. */
+function migrerPortefeuilles(){
+  (S.categories||[]).forEach(function(c){
+    if(c.budget === undefined || c.budget === null){
+      if(c.plafond !== undefined && c.plafond !== null && c.plafond > 0) c.budget = c.plafond;
+      else if(c.budget === undefined) c.budget = null;
+    }
+    delete c.plafond;
+  });
+}
+
 function cat(id){
   var c = S.categories.filter(function(x){return x.id===id;})[0];
-  return c || {id:id, nom:"Sans catégorie", essentiel:false, plafond:null};
+  return c || {id:id, nom:"Sans portefeuille", essentiel:false, budget:null};
 }
 
 /* ---------- Persistance (Claude storage → repli navigateur → mémoire) ---------- */
@@ -489,9 +531,27 @@ function sauvegarder(){
 function toast(msg){
   var el = document.getElementById("toast");
   el.textContent = msg; el.classList.add("on");
+  el._afficheDepuis = Date.now();
   clearTimeout(el._t);
   el._t = setTimeout(function(){ el.classList.remove("on"); }, 2600);
 }
+// Filet de sécurité : sur iPhone, verrouiller l'écran ou changer d'app pendant
+// qu'un toast s'affiche peut mettre en pause son minuteur — à cause de ça, le
+// message peut rester figé jusqu'au retour. On revérifie à chaque retour au
+// premier plan, et un tap sur le toast le referme aussi immédiatement.
+document.addEventListener("visibilitychange", function(){
+  if(document.visibilityState !== "visible") return;
+  var el = document.getElementById("toast");
+  if(el && el.classList.contains("on") && el._afficheDepuis && Date.now()-el._afficheDepuis > 2600){
+    el.classList.remove("on");
+  }
+});
+function attacherFermetureToast(){
+  var el = document.getElementById("toast");
+  if(el) el.addEventListener("click", function(){ el.classList.remove("on"); });
+}
+if(document.readyState === "loading") document.addEventListener("DOMContentLoaded", attacherFermetureToast);
+else attacherFermetureToast();
 
 /* ============================================================
    MATHÉMATIQUES
@@ -698,6 +758,88 @@ function previsionsCategories(m){
     .sort(function(a,b){ return (b.reel||b.prevu) - (a.reel||a.prevu); });
 }
 
+/* ---------- Portefeuilles ----------
+   Un portefeuille = un poste de dépense doté d'un budget mensuel.
+   Budget flexible : réajustable à tout moment, l'app propose un montant
+   fondé sur vos habitudes mais ne l'impose jamais. */
+function etatPortefeuilles(m){
+  var prev = previsionsCategories(m);
+  var parId = {};
+  prev.forEach(function(p){ parId[p.cat.id] = p; });
+
+  var totalJours = joursDansMois(m);
+  var jourAuj = estMoisEnCours(m) ? new Date().getDate() : (estFutur(m) ? 0 : totalJours);
+  var avancement = Math.min(1, jourAuj/totalJours);
+
+  return S.categories.map(function(c){
+    var p = parId[c.id];
+    var depense = somme(txMois(m,"variable").filter(function(t){ return t.categorieId===c.id; })
+                          .map(function(t){ return t.montant; }));
+    var budget = (c.budget && c.budget>0) ? c.budget : null;
+    var suggere = p && p.prevu ? Math.round(p.prevu*1.1/1000)*1000 : 0;
+    var restant = budget ? budget - depense : null;
+    var part = budget ? (depense/budget*100) : null;
+
+    // Rythme : à ce stade du mois, où devrait-on être si on lissait le budget ?
+    var attenduAujourdhui = budget ? budget*avancement : null;
+    var avance = (budget && attenduAujourdhui>0) ? depense - attenduAujourdhui : null;
+
+    // Projection fin de mois au rythme actuel
+    var projete = (budget && avancement>0.15) ? depense/avancement : null;
+
+    var statut = "sansBudget";
+    if(budget){
+      if(part >= 100) statut = "depasse";
+      else if(part >= S.reglages.alerteEnveloppe) statut = "attention";
+      else if(projete && projete > budget*1.05) statut = "risque";
+      else statut = "ok";
+    }
+    return {
+      cat:c, budget:budget, depense:depense, restant:restant, part:part,
+      suggere:suggere, statut:statut, projete:projete, avance:avance,
+      nbTx: txMois(m,"variable").filter(function(t){ return t.categorieId===c.id; }).length,
+      prevu: p ? p.prevu : 0, typique: p ? p.typique : 0
+    };
+  });
+}
+
+/* Ceux qui ont réellement un budget défini, triés par urgence puis par poids */
+function portefeuillesActifs(m){
+  var rang = {depasse:0, attention:1, risque:2, ok:3};
+  return etatPortefeuilles(m).filter(function(p){ return p.budget; })
+    .sort(function(a,b){
+      if(rang[a.statut] !== rang[b.statut]) return rang[a.statut]-rang[b.statut];
+      return b.part - a.part;
+    });
+}
+
+function totauxPortefeuilles(m){
+  var actifs = portefeuillesActifs(m);
+  var budget = somme(actifs.map(function(p){ return p.budget; }));
+  var depense = somme(actifs.map(function(p){ return p.depense; }));
+  // Dépenses variables qui ne sont rattachées à aucun portefeuille budgété
+  var idsBudgetes = {};
+  actifs.forEach(function(p){ idsBudgetes[p.cat.id] = true; });
+  var horsPortefeuille = somme(txMois(m,"variable")
+    .filter(function(t){ return !idsBudgetes[t.categorieId]; })
+    .map(function(t){ return t.montant; }));
+  return {
+    nb: actifs.length, budget: budget, depense: depense,
+    restant: budget - depense,
+    part: budget ? depense/budget*100 : 0,
+    horsPortefeuille: horsPortefeuille,
+    depasses: actifs.filter(function(p){ return p.statut==="depasse"; }).length,
+    aSurveiller: actifs.filter(function(p){ return p.statut==="attention" || p.statut==="risque"; }).length
+  };
+}
+
+function couleurStatut(s){
+  return s==="depasse" ? "var(--rouge)" : (s==="attention"||s==="risque") ? "var(--accent)" : "var(--vert)";
+}
+function classeJauge(s){
+  return s==="depasse" ? "depasse" : (s==="attention"||s==="risque") ? "attention" : "";
+}
+
 /* Dépenses hors norme : |x − médiane| / (1,4826 × MAD) > seuil */
 function anomalies(m){
   var passes = historique(m, 6).concat([m]);
@@ -859,6 +1001,24 @@ function conseils(m){
     var mt = somme(restantes.map(function(x){return x.montant;}));
     out.push({p:"haute", i:"!", t:"Provisionnez d'abord vos charges",
       d:"Il reste "+fmtD(mt)+" de charges obligatoires à régler ce mois. Mettez cette somme de côté avant toute autre dépense — c'est la seule partie de votre budget qui n'est pas négociable."});
+  }
+
+  // Portefeuilles en difficulté
+  var pfAlerte = portefeuillesActifs(m).filter(function(p){
+    return p.statut==="depasse" || p.statut==="attention" || p.statut==="risque";
+  });
+  if(pfAlerte.length){
+    var depasses = pfAlerte.filter(function(p){ return p.statut==="depasse"; });
+    if(depasses.length){
+      var noms = depasses.slice(0,3).map(function(p){ return p.cat.nom; }).join(", ");
+      var exces = somme(depasses.map(function(p){ return Math.abs(p.restant); }));
+      out.push({p:"haute", i:"◈", t:(depasses.length>1?"Des portefeuilles sont dépassés":"Un portefeuille est dépassé"),
+        d:noms+" : "+fmtD(exces)+" au-delà du budget prévu. Soit vous freinez sur ce poste jusqu'à la fin du mois, soit le budget était trop serré — dans ce cas réajustez-le, c'est fait pour."});
+    } else {
+      var proches = pfAlerte.slice(0,3).map(function(p){ return p.cat.nom+" ("+pct(p.part)+")"; }).join(", ");
+      out.push({p:"moyenne", i:"◈", t:"Portefeuilles à surveiller",
+        d:proches+". Vous n'avez pas encore dépassé, mais au rythme actuel la fin du mois sera juste sur ces postes."});
+    }
   }
 
   if(revenu > 0 && c.central > revenu){
@@ -1125,9 +1285,26 @@ function svgScore(v){
    RENDU
    ============================================================ */
 function $(id){ return document.getElementById(id); }
+function kpi(lab, val, sub, ton){
+  return '<div class="kpi'+(ton?' '+ton:'')+'"><span class="lab">'+lab+'</span>'
+       + '<span class="val num">'+val+'</span>'
+       + (sub ? '<span class="sub">'+sub+'</span>' : '') + '</div>';
+}
+
 function optionsCategories(sel){
+  // Affiche le reste disponible pour les postes dotés d'un budget : on choisit
+  // son portefeuille en sachant tout de suite ce qu'il y reste.
+  var etats = {};
+  try{
+    etatPortefeuilles(S.moisActif).forEach(function(p){ etats[p.cat.id] = p; });
+  }catch(e){}
   return S.categories.map(function(c){
-    return '<option value="'+c.id+'"'+(c.id===sel?' selected':'')+'>'+ech(c.nom)+'</option>';
+    var p = etats[c.id], suffixe = "";
+    if(p && p.budget){
+      suffixe = p.restant < 0 ? "  (dépassé de "+fmt(Math.abs(p.restant))+")"
+                              : "  ("+fmt(p.restant)+" restant)";
+    }
+    return '<option value="'+c.id+'"'+(c.id===sel?' selected':'')+'>'+ech(c.nom)+ech(suffixe)+'</option>';
   }).join("");
 }
 function optionsMois(sel, avant, apres){
@@ -1188,6 +1365,32 @@ function vueBord(){
       + '<span class="val num">'+fmt(at.epargne)+'</span>'
       + '<span class="sub">fin de mois projetée · cible '+fmt(c.epargneCible)+' · autonomie '+(Math.round(tr.autonomie*10)/10).toString().replace(".",",")+' mois</span></div>'
     + '</div>';
+
+  /* Portefeuilles : résumé compact */
+  var pfs = portefeuillesActifs(m);
+  if(pfs.length){
+    var Tp = totauxPortefeuilles(m);
+    var soustitre = Tp.depasses ? Tp.depasses+' dépassé'+(Tp.depasses>1?'s':'')
+                  : Tp.aSurveiller ? Tp.aSurveiller+' à surveiller'
+                  : 'tous dans les clous';
+    h += '<div class="carte" style="margin-top:var(--space-4)">'
+      + '<div class="titre-bloc"><div><span class="eyebrow">'+soustitre+'</span>'
+      + '<h2>Mes portefeuilles</h2></div>'
+      + '<span class="portef-chiffres num">'+fmt(Tp.depense)+' <span style="color:var(--subtle)">/ '+fmt(Tp.budget)+'</span></span></div>'
+      + '<div class="pf-mini">';
+    pfs.slice(0,5).forEach(function(p){
+      var partAff = Math.min(100, Math.max(0, p.part));
+      h += '<div class="pf-mini-l">'
+        + '<span class="pf-mini-nom"><span>'+ech(p.cat.nom)+'</span></span>'
+        + '<span class="pf-mini-val" style="color:'+couleurStatut(p.statut)+'">'
+        +   (p.restant<0 ? '−'+fmt(Math.abs(p.restant)) : fmt(p.restant)+' restant')+'</span>'
+        + '<div class="jauge"><i class="'+classeJauge(p.statut)+'" style="width:'+partAff+'%"></i></div>'
+        + '</div>';
+    });
+    h += '</div>';
+    if(pfs.length>5) h += '<button class="btn discret mini" data-act="aller" data-vue="portefeuilles" style="margin-top:var(--space-3)">Voir les '+pfs.length+' portefeuilles →</button>';
+    h += '</div>';
+  }
 
   /* Corridor */
   h += '<div class="carte" style="margin-top:var(--space-4)">'
@@ -1333,28 +1536,28 @@ function vueDepenses(){
     h += '</div></div>';
   }
 
-  /* Enveloppes */
-  h += '<div class="carte animate-in d2"><div class="titre-bloc"><div><h3>Enveloppes du mois</h3>'
-    + '<p class="aide">Un plafond par poste. Laissez vide pour utiliser la suggestion statistique.</p></div></div>';
-  if(!pv.length){
-    h += '<p class="aide">Rien à afficher tant qu\'aucune dépense variable n\'est saisie.</p>';
-  } else {
-    h += '<div class="liste">';
-    pv.forEach(function(p){
-      var plafond = p.cat.plafond || (p.prevu ? Math.round(p.prevu*1.1/1000)*1000 : 0);
-      var part = plafond ? Math.min(140, p.reel/plafond*100) : 0;
-      var cl = part>100 ? "depasse" : part>=S.reglages.alerteEnveloppe ? "attention" : "";
-      h += '<div class="item" style="align-items:flex-start;flex-direction:column;gap:var(--space-2)">'
-        + '<div style="display:flex;width:100%;gap:var(--space-3);align-items:center;flex-wrap:wrap">'
-        + '<span class="nom">'+ech(p.cat.nom)+' <span class="tag'+(p.stabilite==="stable"?" vert":p.stabilite==="imprévisible"?" rouge":"")+'">'+p.stabilite+'</span>'
-        + '<br><span class="meta">'+(p.moisPresents?('habituellement '+fmt(p.typique)+' · prévu '+fmt(p.prevu)):'nouveau poste')+'</span></span>'
-        + '<input type="text" inputmode="decimal" autocomplete="off" class="num num-champ" style="width:120px" placeholder="'+(plafond||"plafond")+'" value="'+(p.cat.plafond||"")+'" data-act="plafond" data-id="'+p.cat.id+'">'
-        + '<span class="mt" style="min-width:80px;text-align:right">'+fmt(p.reel)+'</span></div>'
-        + '<div class="jauge" style="width:100%"><i class="'+cl+'" style="width:'+Math.min(100,part)+'%"></i></div>'
+  /* Renvoi vers les portefeuilles (le réglage des budgets vit là-bas, à un seul endroit) */
+  var pfA = portefeuillesActifs(m);
+  h += '<div class="carte animate-in d2"><div class="titre-bloc"><div><h3>Budgets par poste</h3>'
+    + '<p class="aide">Les budgets se règlent dans l\'onglet Portefeuilles, à un seul endroit pour éviter les réglages contradictoires.</p></div></div>';
+  if(pfA.length){
+    var Tpf = totauxPortefeuilles(m);
+    h += '<div class="pf-mini">';
+    pfA.slice(0,4).forEach(function(p){
+      var partAff = Math.min(100, Math.max(0, p.part));
+      h += '<div class="pf-mini-l">'
+        + '<span class="pf-mini-nom"><span>'+ech(p.cat.nom)+'</span></span>'
+        + '<span class="pf-mini-val" style="color:'+couleurStatut(p.statut)+'">'
+        +   (p.restant<0 ? '\u2212'+fmt(Math.abs(p.restant)) : fmt(p.restant)+' restant')+'</span>'
+        + '<div class="jauge"><i class="'+classeJauge(p.statut)+'" style="width:'+partAff+'%"></i></div>'
         + '</div>';
     });
     h += '</div>';
+  } else {
+    h += '<p class="aide">Aucun budget défini pour l\'instant. Un portefeuille par thème \u2014 cuisine, loisirs, transport \u2014 et vous verrez fondre ce qu\'il reste au fil du mois.</p>';
   }
+  h += '<button class="btn'+(pfA.length?' discret mini':' primaire large')+'" data-act="aller" data-vue="portefeuilles" style="margin-top:var(--space-4)">'
+    + (pfA.length ? 'G\u00e9rer mes portefeuilles \u2192' : 'Cr\u00e9er mon premier portefeuille') + '</button>';
   h += '</div>';
 
   /* Journal */
@@ -1395,6 +1598,104 @@ function vueDepenses(){
 }
 
 /* ---------- Revenus ---------- */
+/* ---------- Vue Portefeuilles ---------- */
+function vuePortefeuilles(){
+  var m = S.moisActif;
+  var tous = etatPortefeuilles(m);
+  var actifs = portefeuillesActifs(m);
+  var sansBudget = tous.filter(function(p){ return !p.budget; });
+  var T = totauxPortefeuilles(m);
+  var h = "";
+
+  if(!actifs.length){
+    h += '<div class="vide d1"><h3>Vos portefeuilles</h3>'
+      + '<p>Un portefeuille, c\'est une enveloppe mensuelle par thème : la cuisine, les loisirs, le transport… '
+      + 'Vous lui donnez un budget, vous y rattachez vos dépenses, et vous voyez fondre ce qu\'il reste. '
+      + 'Le budget reste flexible : réajustez-le quand vous voulez.</p></div>';
+  } else {
+    // Synthèse globale
+    var couleurT = T.depasses ? "var(--rouge)" : T.aSurveiller ? "var(--accent)" : "var(--vert)";
+    h += '<div class="carte d1"><div class="titre-bloc"><div>'
+      + '<span class="eyebrow">Ce mois-ci</span><h2>Vue d\'ensemble</h2></div></div>'
+      + '<div class="grille g3">'
+      + kpi("Budget total alloué", fmtD(T.budget), T.nb + (T.nb>1?" portefeuilles":" portefeuille"))
+      + kpi("Déjà dépensé", fmtD(T.depense), pct(T.part)+" du budget", T.part>=100?"alerte":T.part>=80?"":"bien")
+      + kpi("Reste disponible", fmtD(T.restant), T.restant<0 ? "budget dépassé" : "jusqu\'à la fin du mois", T.restant<0?"alerte":"bien")
+      + '</div>';
+    if(T.horsPortefeuille > 0){
+      h += '<p class="aide" style="margin-top:var(--space-4)">'
+        + '<strong>'+fmtD(T.horsPortefeuille)+'</strong> de dépenses ce mois-ci ne sont rattachées à aucun portefeuille budgété. '
+        + 'C\'est normal si elles sont exceptionnelles — sinon, créez le portefeuille correspondant plus bas.</p>';
+    }
+    h += '</div>';
+
+    // Liste des portefeuilles
+    h += '<div class="carte d2"><div class="titre-bloc"><div>'
+      + '<span class="eyebrow">Suivi détaillé</span><h2>Mes portefeuilles</h2></div></div>';
+    h += '<div class="liste">';
+    actifs.forEach(function(p){
+      var partAff = Math.min(100, Math.max(0, p.part));
+      var etiq = p.statut==="depasse" ? '<span class="tag rouge">dépassé</span>'
+               : p.statut==="attention" ? '<span class="tag or">bientôt épuisé</span>'
+               : p.statut==="risque" ? '<span class="tag or">rythme trop rapide</span>'
+               : '<span class="tag vert">dans les clous</span>';
+      var phrase;
+      if(p.restant < 0) phrase = 'Dépassé de <strong style="color:var(--rouge)">'+fmt(Math.abs(p.restant))+'</strong>';
+      else phrase = 'Reste <strong style="color:'+couleurStatut(p.statut)+'">'+fmt(p.restant)+'</strong>';
+      if(p.projete && p.statut!=="depasse" && p.projete > p.budget*1.05)
+        phrase += ' · à ce rythme, fin de mois vers '+fmt(p.projete);
+
+      h += '<div class="portef">'
+        + '<div class="portef-haut">'
+        +   '<span class="portef-nom">'+ech(p.cat.nom)+' '+etiq+'</span>'
+        +   '<span class="portef-chiffres num">'+fmt(p.depense)+' <span style="color:var(--subtle)">/ '+fmt(p.budget)+'</span></span>'
+        + '</div>'
+        + '<div class="jauge"><i class="'+classeJauge(p.statut)+'" style="width:'+partAff+'%"></i></div>'
+        + '<div class="portef-bas">'
+        +   '<span class="meta">'+phrase+'</span>'
+        +   '<span class="portef-actions">'
+        +     '<input type="text" inputmode="decimal" autocomplete="off" class="num num-champ portef-champ" '
+        +       'value="'+p.budget+'" data-act="budgetPortef" data-id="'+p.cat.id+'" aria-label="Budget de '+ech(p.cat.nom)+'">'
+        +     '<button class="btn discret mini" data-act="retirerBudget" data-id="'+p.cat.id+'" title="Retirer le budget">✕</button>'
+        +   '</span>'
+        + '</div></div>';
+    });
+    h += '</div></div>';
+  }
+
+  // Créer / activer un portefeuille
+  h += '<div class="carte d3"><div class="titre-bloc"><div>'
+    + '<span class="eyebrow">Ajouter</span><h2>Donner un budget à un poste</h2></div></div>';
+
+  if(sansBudget.length){
+    h += '<p class="aide" style="margin-bottom:var(--space-4)">Ces postes existent déjà mais n\'ont pas encore de budget. '
+      + 'Le montant suggéré vient de vos dépenses passées — libre à vous de le changer.</p><div class="liste">';
+    sansBudget.forEach(function(p){
+      var sugg = p.suggere || 0;
+      h += '<div class="item">'
+        + '<span class="nom">'+ech(p.cat.nom)
+        + '<br><span class="meta">'+(p.typique ? 'habituellement '+fmt(p.typique)+' par mois' : 'pas encore d\'historique')+'</span></span>'
+        + '<input type="text" inputmode="decimal" autocomplete="off" class="num num-champ portef-champ" '
+        +   'placeholder="'+(sugg||"budget")+'" data-act="budgetPortef" data-id="'+p.cat.id+'" aria-label="Budget de '+ech(p.cat.nom)+'">'
+        + '</div>';
+    });
+    h += '</div>';
+  }
+
+  h += '<div class="ligne-form" style="margin-top:var(--space-5)">'
+    + '<div class="champ"><label for="pfNom">Nouveau portefeuille</label>'
+    +   '<input type="text" id="pfNom" placeholder="Cuisine, Loisirs, Transport…"></div>'
+    + '<div class="champ"><label for="pfBudget">Budget mensuel</label>'
+    +   '<input type="text" inputmode="decimal" autocomplete="off" class="num-champ" id="pfBudget" placeholder="0"></div>'
+    + '</div>'
+    + '<button class="btn primaire large" data-act="ajoutPortefeuille" style="margin-top:var(--space-4)">Créer le portefeuille</button>'
+    + '<p class="aide" style="margin-top:var(--space-4)">Les charges obligatoires (loyer, école, électricité) gardent leur propre '
+    + 'système dans l\'onglet Charges : elles se pointent quand elles sont payées, sans budget à surveiller.</p>'
+    + '</div>';
+
+  return h;
+}
+
 function vueRevenus(){
   var m = S.moisActif;
   var encaisse = totalRevenusEncaisses(m);
@@ -1614,7 +1915,8 @@ function vueReglages(){
     + '<p class="aide" style="margin-top:var(--space-4)">La trésorerie de départ est ce que vous aviez de côté avant votre première saisie. Elle sert au calcul de votre autonomie et de la projection.</p></div>';
 
   h += '<div class="carte animate-in d1"><div class="titre-bloc"><div><h3>Sauvegarde</h3>'
-    + '<p class="aide">Vos données sont enregistrées automatiquement à chaque modification, en <strong>'+Stockage.mode+'</strong>. Exportez régulièrement : un fichier JSON sur votre téléphone ou votre Drive, c\'est votre seule vraie assurance.</p></div></div>'
+    + '<p class="aide">Vos données sont enregistrées automatiquement à chaque modification, en <strong>'+Stockage.mode+'</strong>. Exportez régulièrement : un fichier JSON sur votre téléphone ou votre Drive, c\'est votre seule vraie assurance.</p>'
+    + '<p class="aide" style="margin-top:var(--space-3)"><strong>Important si vous utilisez l\'icône sur l\'écran d\'accueil de l\'iPhone :</strong> ne la supprimez jamais pour la recréer, même après une mise à jour — c\'est ce qui efface les données. L\'app détecte elle-même les nouvelles versions publiées sur GitHub et propose un bouton « Actualiser » en haut de l\'écran ; ce bouton ne touche jamais à vos données.</p></div></div>'
     + '<div style="display:flex;gap:var(--space-3);flex-wrap:wrap">'
     + '<button class="btn primaire" data-act="export">Exporter mes données</button>'
     + '<button class="btn" data-act="import">Importer une sauvegarde</button>'
@@ -1751,13 +2053,60 @@ var A = {
     majEtRendre("Ligne supprimée");
   },
 
+  ajoutPortefeuille: function(){
+    var nom = val("pfNom");
+    if(!nom){ toast("Donnez un nom au portefeuille."); return; }
+    var budget = nbTexte(val("pfBudget"));
+    var existant = S.categories.filter(function(c){ return c.nom.toLowerCase()===nom.toLowerCase(); })[0];
+    if(existant){
+      // Le poste existe déjà : on lui attribue simplement son budget
+      existant.budget = budget>0 ? budget : null;
+      vide("pfNom"); vide("pfBudget");
+      majEtRendre(budget>0 ? "Budget attribué à « "+existant.nom+" »" : "Ce poste existait déjà");
+      return;
+    }
+    // Garde-fou : un poste très proche existe-t-il déjà ? On évite les doublons
+    // du type « Cuisine » alors que « Cuisine & nourriture » est déjà là.
+    var n = normalise(nom);
+    var proche = S.categories.filter(function(c){
+      var cn = normalise(c.nom);
+      return cn.indexOf(n) === 0 || n.indexOf(cn) === 0;
+    })[0];
+    if(proche){
+      var mtn = budget;
+      confirmer("Un poste très proche existe déjà",
+        "« "+proche.nom+" » est déjà dans votre liste. Voulez-vous lui donner ce budget plutôt que de créer un doublon ?",
+        function(){
+          proche.budget = mtn>0 ? mtn : null;
+          vide("pfNom"); vide("pfBudget");
+          majEtRendre("Budget attribué à « "+proche.nom+" »");
+        },
+        function(){
+          S.categories.push({id: uid("c"), nom: nom, essentiel:false, budget: mtn>0 ? mtn : null});
+          vide("pfNom"); vide("pfBudget");
+          majEtRendre("Portefeuille créé");
+        },
+        "Utiliser « "+proche.nom+" »", "Créer quand même");
+      return;
+    }
+    S.categories.push({id: uid("c"), nom: nom, essentiel:false, budget: budget>0 ? budget : null});
+    vide("pfNom"); vide("pfBudget");
+    majEtRendre("Portefeuille créé");
+  },
+
+  retirerBudget: function(el){
+    var c = cat(el.getAttribute("data-id"));
+    c.budget = null;
+    majEtRendre("Budget retiré — le poste reste, sans plafond");
+  },
+
   ajoutCat: function(){
     var nom = val("catNom");
     if(!nom){ toast("Nommez le poste."); return; }
     if(S.categories.some(function(c){ return c.nom.toLowerCase()===nom.toLowerCase(); })){
       toast("Ce poste existe déjà."); return;
     }
-    S.categories.push({id: uid("c"), nom: nom, essentiel: val("catEss")==="1", plafond:null});
+    S.categories.push({id: uid("c"), nom: nom, essentiel: val("catEss")==="1", budget:null});
     vide("catNom");
     majEtRendre("Poste créé");
   },
@@ -1828,15 +2177,18 @@ var A = {
 };
 
 /* ---------- Confirmation ---------- */
-function confirmer(titre, texte, suite){
+function confirmer(titre, texte, suite, alternative, libelleOui, libelleAlt){
   var mo = $("modale");
+  var boutons = '<button class="btn" data-act="fermerModale">Annuler</button>';
+  if(alternative) boutons += '<button class="btn" id="confirmerAlt">'+ech(libelleAlt||"Non")+'</button>';
+  boutons += '<button class="btn primaire" id="confirmerOui">'+ech(libelleOui||"Confirmer")+'</button>';
   $("modaleIn").innerHTML = '<h3 style="font-family:var(--serif);font-size:var(--text-xl);margin-bottom:var(--space-3)">'+ech(titre)+'</h3>'
     + '<p class="aide" style="margin-bottom:var(--space-6)">'+ech(texte)+'</p>'
-    + '<div style="display:flex;gap:var(--space-3);justify-content:flex-end">'
-    + '<button class="btn" data-act="fermerModale">Annuler</button>'
-    + '<button class="btn primaire" id="confirmerOui">Confirmer</button></div>';
+    + '<div style="display:flex;gap:var(--space-3);justify-content:flex-end;flex-wrap:wrap">'
+    + boutons + '</div>';
   mo.classList.add("on");
   $("confirmerOui").onclick = function(){ mo.classList.remove("on"); suite(); };
+  if(alternative) $("confirmerAlt").onclick = function(){ mo.classList.remove("on"); alternative(); };
 }
 A.fermerModale = function(){ $("modale").classList.remove("on"); };
 
@@ -1879,15 +2231,29 @@ function ouvrirVue(v){
   try{ window.scrollTo({top:0, behavior:"smooth"}); }catch(e){}
 }
 
-var RENDUS = {bord:vueBord, charges:vueCharges, depenses:vueDepenses, revenus:vueRevenus, projets:vueProjets, analyse:vueAnalyse, reglages:vueReglages};
+var RENDUS = {bord:vueBord, charges:vueCharges, depenses:vueDepenses, portefeuilles:vuePortefeuilles, revenus:vueRevenus, projets:vueProjets, analyse:vueAnalyse, reglages:vueReglages};
 
 function rendre(){
   $("moisLabel").textContent = libelleMois(S.moisActif);
+  // Les vues inactives sont vidées : sans cela, plusieurs formulaires portant les
+  // mêmes identifiants coexistent dans la page et getElementById renvoie celui de
+  // la vue masquée — ce qui faisait lire un champ vide au lieu du champ saisi.
+  Array.prototype.forEach.call(document.querySelectorAll(".vue"), function(s){
+    if(s.id !== "vue-"+vueActive && s.innerHTML !== "") s.innerHTML = "";
+  });
   var el = $("vue-"+vueActive);
   if(el && RENDUS[vueActive]) el.innerHTML = RENDUS[vueActive]();
   var restantes = chargesRestantes(S.moisActif).length;
   var pip = $("pipCharges");
   if(pip){ pip.hidden = !restantes; pip.textContent = restantes; }
+  // Pastille Portefeuilles : nombre de portefeuilles dépassés ou proches de l'être
+  var pip2 = $("pipPortef");
+  if(pip2){
+    var T = totauxPortefeuilles(S.moisActif);
+    var alertes = T.depasses + T.aSurveiller;
+    pip2.hidden = !alertes;
+    pip2.textContent = alertes;
+  }
 }
 function majEtRendre(msg){
   sauvegarder();
@@ -1906,10 +2272,10 @@ document.addEventListener("click", function(e){
 document.addEventListener("change", function(e){
   var el = e.target;
   var a = el.getAttribute && el.getAttribute("data-act");
-  if(a === "plafond"){
+  if(a === "plafond" || a === "budgetPortef"){
     var c = cat(el.getAttribute("data-id"));
     var v = nbTexte(el.value);
-    c.plafond = v<=0 ? null : v;
+    c.budget = v<=0 ? null : v;
     sauvegarder(); rendre();
   }
   if(a === "reglage"){
@@ -2029,17 +2395,47 @@ function demarrer(){
     if(charge && charge.categories){
       S = Object.assign(etatVierge(), charge);
       S.reglages = Object.assign(etatVierge().reglages, charge.reglages||{});
+      migrerPortefeuilles();
     }
     S.moisActif = moisCourantReel();
     pretPourSauvegarde = true;
     $("etatSauve").textContent = "Enregistré · " + Stockage.mode;
     ouvrirVue("bord");
+    verifierNouvelleVersion();
   }).catch(function(){
     pretPourSauvegarde = true;
     $("etatSauve").textContent = "Hors sauvegarde";
     toast("Sauvegarde indisponible ici — pensez à exporter vos données.");
     ouvrirVue("bord");
+    verifierNouvelleVersion();
   });
+}
+
+/* ---------- Détection de nouvelle version sur GitHub Pages ----------
+   Ne touche jamais aux données : compare juste la date de dernière
+   modification du fichier servi par GitHub à celle vue la dernière fois.
+   Si elles diffèrent, on propose un rechargement — jamais de suppression
+   d'icône, jamais de perte de données. */
+var CLE_VERSION = "corridor-derniere-version-vue";
+function verifierNouvelleVersion(){
+  if(typeof fetch !== "function") return;
+  fetch(location.href, {method:"HEAD", cache:"no-store"}).then(function(rep){
+    var marqueur = rep.headers.get("etag") || rep.headers.get("last-modified");
+    if(!marqueur) return;
+    var vu;
+    try{ vu = localStorage.getItem(CLE_VERSION); }catch(e){ return; }
+    try{ localStorage.setItem(CLE_VERSION, marqueur); }catch(e){}
+    if(vu && vu !== marqueur) afficherBandeauMaj();
+  }).catch(function(){ /* pas grave : simple confort, pas une donnée critique */ });
+}
+function afficherBandeauMaj(){
+  if($("bandeauMaj")) return;
+  var b = document.createElement("div");
+  b.id = "bandeauMaj";
+  b.innerHTML = '<span>Une nouvelle version de l\'app est disponible.</span>'
+    + '<button class="btn primaire mini" id="btnActualiser">Actualiser</button>';
+  $("entete").prepend(b);
+  $("btnActualiser").addEventListener("click", function(){ location.reload(); });
 }
 
 /* ---------- Jeu de démonstration ---------- */
