@@ -301,8 +301,6 @@ svg.graph{width:100%;height:auto;display:block;overflow:visible}
 }
 
 /* Toast */
-#toast{position:fixed;left:50%;bottom:calc(var(--barre-bas) + var(--space-3));transform:translate(-50%,140%);background:var(--surface-2);border:1px solid var(--border-fort);border-radius:var(--radius);padding:var(--space-3) var(--space-5);font-size:var(--text-sm);z-index:200;transition:transform var(--normal) var(--ease-out);box-shadow:0 8px 24px rgba(0,0,0,.4);max-width:90vw;text-align:center}
-#toast.on{transform:translate(-50%,0)}
 
 /* Tableaux : cartes empilées sur mobile, tableau classique au-delà */
 .tableau{width:100%;border-collapse:collapse;font-size:var(--text-sm)}
@@ -322,6 +320,38 @@ svg.graph{width:100%;height:auto;display:block;overflow:visible}
   .tableau td::before{display:none}
   .tableau td.n,.tableau th.n{text-align:right}
 }
+input.erreur-champ,select.erreur-champ,textarea.erreur-champ{
+  border-color:var(--rouge)!important;
+  animation:tremble .32s var(--ease-out);
+}
+@keyframes tremble{
+  0%,100%{transform:translateX(0)}
+  20%{transform:translateX(-5px)}
+  40%{transform:translateX(5px)}
+  60%{transform:translateX(-3px)}
+  80%{transform:translateX(3px)}
+}
+/* Notification bas d'écran avec croix de fermeture. Pas de minuterie : elle
+   reste jusqu'à ce qu'on la ferme (croix, tap, ou action suivante). */
+#toast{
+  position:fixed;left:50%;bottom:calc(var(--barre-bas) + var(--space-3));
+  transform:translate(-50%,140%);
+  display:flex;align-items:center;gap:var(--space-3);
+  background:var(--surface-2);border:1px solid var(--border-fort);border-radius:var(--radius);
+  padding:var(--space-3) var(--space-3) var(--space-3) var(--space-5);
+  font-size:var(--text-sm);z-index:200;
+  transition:transform var(--normal) var(--ease-out);
+  box-shadow:0 8px 24px rgba(0,0,0,.4);max-width:90vw;
+}
+#toast.on{transform:translate(-50%,0)}
+#toast .toast-txt{flex:1;line-height:1.4}
+#toast .toast-x{
+  flex:none;width:32px;height:32px;border-radius:var(--radius-sm);
+  display:grid;place-items:center;font-size:15px;color:var(--muted);
+  transition:background var(--fast),color var(--fast);
+}
+#toast .toast-x:active{background:var(--border);color:var(--text)}
+
 .scroll-x{overflow-x:auto}
 
 #bandeauMaj{
@@ -523,35 +553,48 @@ function sauvegarder(){
     }).catch(function(){
       if(t) t.textContent = "Échec de l'enregistrement";
       if(p) p.style.background = "var(--rouge)";
-      toast("Sauvegarde impossible. Exportez vos données depuis Réglages.");
+      informer("Sauvegarde impossible", "Vos données n'ont pas pu être enregistrées ici. Exportez-les depuis Réglages pour ne rien perdre.");
     });
   }, 400);
 }
 
+/* Notification en bas d'écran, repensée pour ne jamais rester bloquée :
+   - AUCUNE minuterie (c'était la cause du blocage : iOS met les minuteries en
+     pause quand l'app passe en arrière-plan, et le compte à rebours ne reprenait
+     jamais). La notification reste donc affichée sagement jusqu'à fermeture.
+   - Une croix large pour la fermer à la main.
+   - Fermeture automatique dès que l'utilisateur fait une autre action (nouvelle
+     notification, changement d'onglet, ouverture d'une modale).
+   - Un tap n'importe où sur la notification la ferme aussi. */
 function toast(msg){
+  if(!msg) return;
   var el = document.getElementById("toast");
-  el.textContent = msg; el.classList.add("on");
-  el._afficheDepuis = Date.now();
-  clearTimeout(el._t);
-  el._t = setTimeout(function(){ el.classList.remove("on"); }, 2600);
+  if(!el) return;
+  el.innerHTML = '<span class="toast-txt"></span>'
+    + '<button class="toast-x" aria-label="Fermer" data-act="fermerToast">✕</button>';
+  el.querySelector(".toast-txt").textContent = msg;
+  el.classList.add("on");
 }
-// Filet de sécurité : sur iPhone, verrouiller l'écran ou changer d'app pendant
-// qu'un toast s'affiche peut mettre en pause son minuteur — à cause de ça, le
-// message peut rester figé jusqu'au retour. On revérifie à chaque retour au
-// premier plan, et un tap sur le toast le referme aussi immédiatement.
-document.addEventListener("visibilitychange", function(){
-  if(document.visibilityState !== "visible") return;
+function fermerToast(){
   var el = document.getElementById("toast");
-  if(el && el.classList.contains("on") && el._afficheDepuis && Date.now()-el._afficheDepuis > 2600){
-    el.classList.remove("on");
-  }
-});
-function attacherFermetureToast(){
-  var el = document.getElementById("toast");
-  if(el) el.addEventListener("click", function(){ el.classList.remove("on"); });
+  if(el) el.classList.remove("on");
 }
-if(document.readyState === "loading") document.addEventListener("DOMContentLoaded", attacherFermetureToast);
-else attacherFermetureToast();
+
+/* Signal d'erreur directement sur un champ : bordure rouge + court tremblement.
+   Il s'efface dès que l'utilisateur retouche le champ, donc ne peut jamais
+   rester coincé à l'écran comme le faisaient les notifications. */
+function signalerChamp(id){
+  var el = document.getElementById(id);
+  if(!el) return;
+  el.classList.remove("erreur-champ");
+  void el.offsetWidth; // relance l'animation même si la classe était déjà là
+  el.classList.add("erreur-champ");
+  el.addEventListener("input", function retire(){
+    el.classList.remove("erreur-champ");
+    el.removeEventListener("input", retire);
+  });
+  try{ el.focus(); }catch(e){}
+}
 
 /* ============================================================
    MATHÉMATIQUES
@@ -1946,9 +1989,11 @@ function vide(id){ var e=$(id); if(e) e.value=""; }
 var A = {
   aller: function(el){ ouvrirVue(el.getAttribute("data-vue")); },
 
+  fermerToast: function(){ fermerToast(); },
+
   ajoutDepense: function(){
     var mt = nb("dMontant");
-    if(mt<=0){ toast("Indiquez un montant supérieur à zéro."); $("dMontant").focus(); return; }
+    if(mt<=0){ signalerChamp("dMontant"); return; }
     S.transactions.push({
       id: uid("t"), date: val("dDate") || dateDefaut(), montant: mt,
       categorieId: val("dCat") || S.categories[0].id,
@@ -1961,8 +2006,8 @@ var A = {
 
   ajoutCharge: function(){
     var lib = val("chLib"), mt = nb("chMt");
-    if(!lib){ toast("Donnez un libellé à cette charge."); return; }
-    if(mt<=0){ toast("Indiquez le montant de la charge."); return; }
+    if(!lib){ signalerChamp("chLib"); return; }
+    if(mt<=0){ signalerChamp("chMt"); return; }
     S.charges.push({
       id: uid("ch"), libelle: lib, montant: mt,
       categorieId: val("chCat"), jour: Math.min(31, Math.max(1, nb("chJour")||1)),
@@ -2020,7 +2065,7 @@ var A = {
 
   ajoutRevRec: function(){
     var lib = val("rLib"), mt = nb("rMt");
-    if(!lib || mt<=0){ toast("Il faut une source et un montant."); return; }
+    if(!lib){ signalerChamp("rLib"); return; } if(mt<=0){ signalerChamp("rMt"); return; }
     S.revenusRecurrents.push({
       id: uid("r"), libelle: lib, montant: mt,
       jour: Math.min(31, Math.max(1, nb("rJour")||1)),
@@ -2038,7 +2083,7 @@ var A = {
 
   ajoutRevPonct: function(){
     var mt = nb("rpMt");
-    if(mt<=0){ toast("Indiquez un montant."); return; }
+    if(mt<=0){ signalerChamp("rpMt"); return; }
     S.transactions.push({
       id: uid("t"), date: val("rpDate")||dateDefaut(), montant: mt, categorieId:null,
       libelle: val("rpLib")||"Entrée ponctuelle", type:"revenu", origine:"manuel"
@@ -2055,7 +2100,7 @@ var A = {
 
   ajoutPortefeuille: function(){
     var nom = val("pfNom");
-    if(!nom){ toast("Donnez un nom au portefeuille."); return; }
+    if(!nom){ signalerChamp("pfNom"); return; }
     var budget = nbTexte(val("pfBudget"));
     var existant = S.categories.filter(function(c){ return c.nom.toLowerCase()===nom.toLowerCase(); })[0];
     if(existant){
@@ -2102,9 +2147,9 @@ var A = {
 
   ajoutCat: function(){
     var nom = val("catNom");
-    if(!nom){ toast("Nommez le poste."); return; }
+    if(!nom){ signalerChamp("catNom"); return; }
     if(S.categories.some(function(c){ return c.nom.toLowerCase()===nom.toLowerCase(); })){
-      toast("Ce poste existe déjà."); return;
+      signalerChamp("catNom"); return;
     }
     S.categories.push({id: uid("c"), nom: nom, essentiel: val("catEss")==="1", budget:null});
     vide("catNom");
@@ -2135,7 +2180,7 @@ var A = {
 
   ajoutProjet: function(){
     var nom = val("pNom"), rev = nb("pRev");
-    if(!nom || rev<=0){ toast("Il faut un nom et un revenu attendu."); return; }
+    if(!nom){ signalerChamp("pNom"); return; } if(rev<=0){ signalerChamp("pRev"); return; }
     S.projets.push({
       id: uid("p"), nom: nom, revenu: rev, probabilite: nb("pProb")||50,
       moisCible: val("pMois"), cout: nb("pCout")||0, statut:"actif", notes:""
@@ -2158,7 +2203,6 @@ var A = {
     a.download = "corridor-budget-" + aujourdhui() + ".json";
     document.body.appendChild(a); a.click(); document.body.removeChild(a);
     setTimeout(function(){ URL.revokeObjectURL(a.href); }, 1000);
-    toast("Sauvegarde téléchargée");
   },
 
   import: function(){ $("fichierImport").click(); },
@@ -2192,6 +2236,16 @@ function confirmer(titre, texte, suite, alternative, libelleOui, libelleAlt){
 }
 A.fermerModale = function(){ $("modale").classList.remove("on"); };
 
+/* Message simple avec un seul bouton « Compris », via la modale (jamais bloquant,
+   toujours refermable). Réservé aux cas critiques : erreurs de sauvegarde/import. */
+function informer(titre, texte){
+  var mo = $("modale");
+  $("modaleIn").innerHTML = '<h3 style="font-family:var(--serif);font-size:var(--text-xl);margin-bottom:var(--space-3)">'+ech(titre)+'</h3>'
+    + '<p class="aide" style="margin-bottom:var(--space-6)">'+ech(texte)+'</p>'
+    + '<div style="display:flex;justify-content:flex-end"><button class="btn primaire" data-act="fermerModale">Compris</button></div>';
+  mo.classList.add("on");
+}
+
 /* ---------- Ajout rapide (bouton flottant) ---------- */
 A.ouvrirAjoutRapide = function(){
   $("modaleIn").innerHTML = '<h3 style="font-family:var(--serif);font-size:var(--text-xl);margin-bottom:var(--space-4)">Ajouter une dépense</h3>'
@@ -2208,7 +2262,7 @@ A.ouvrirAjoutRapide = function(){
 };
 A.ajoutDepenseModal = function(){
   var mt = nbTexte(val("mMontant"));
-  if(mt<=0){ toast("Indiquez un montant supérieur à zéro."); $("mMontant").focus(); return; }
+  if(mt<=0){ signalerChamp("mMontant"); return; }
   S.transactions.push({
     id: uid("t"), date: val("mDate") || dateDefaut(), montant: mt,
     categorieId: val("mCat") || S.categories[0].id,
@@ -2220,6 +2274,7 @@ A.ajoutDepenseModal = function(){
 
 /* ---------- Rendu global ---------- */
 function ouvrirVue(v){
+  fermerToast(); // changer de vue referme toute notification restante
   vueActive = v;
   Array.prototype.forEach.call(document.querySelectorAll(".onglet"), function(o){
     o.setAttribute("aria-selected", o.getAttribute("data-vue")===v ? "true" : "false");
@@ -2263,11 +2318,18 @@ function majEtRendre(msg){
 
 /* ---------- Événements ---------- */
 document.addEventListener("click", function(e){
+  var surToast = e.target.closest && e.target.closest("#toast");
   var el = e.target.closest("[data-act]");
-  if(!el) return;
-  var a = el.getAttribute("data-act");
-  if(el.tagName === "INPUT") return;
-  if(A[a]){ e.preventDefault(); A[a](el); }
+  if(el){
+    var a = el.getAttribute("data-act");
+    if(el.tagName === "INPUT") return;
+    // Toute action (sauf la croix elle-même) referme d'abord la notification en cours
+    if(a !== "fermerToast" && !surToast) fermerToast();
+    if(A[a]){ e.preventDefault(); A[a](el); }
+    return;
+  }
+  // Un tap n'importe où sur la notification la ferme
+  if(surToast){ fermerToast(); return; }
 });
 document.addEventListener("change", function(e){
   var el = e.target;
@@ -2378,10 +2440,10 @@ function brancher(){
         S.moisActif = moisCourantReel();
         majEtRendre("Sauvegarde restaurée");
       }catch(err){
-        toast("Fichier illisible — vérifiez qu'il vient bien de Corridor.");
+        informer("Fichier illisible", "Ce fichier n'a pas pu être lu. Vérifiez qu'il vient bien d'un export Corridor.");
       }
     };
-    lect.onerror = function(){ toast("Lecture du fichier impossible."); };
+    lect.onerror = function(){ informer("Lecture impossible", "Le fichier n'a pas pu être ouvert. Réessayez ou choisissez un autre fichier."); };
     lect.readAsText(f);
     e.target.value = "";
   });
@@ -2405,7 +2467,7 @@ function demarrer(){
   }).catch(function(){
     pretPourSauvegarde = true;
     $("etatSauve").textContent = "Hors sauvegarde";
-    toast("Sauvegarde indisponible ici — pensez à exporter vos données.");
+    informer("Sauvegarde indisponible", "Sur cet appareil, l'enregistrement automatique n'est pas garanti. Pensez à exporter vos données régulièrement depuis Réglages.");
     ouvrirVue("bord");
     verifierNouvelleVersion();
   });
